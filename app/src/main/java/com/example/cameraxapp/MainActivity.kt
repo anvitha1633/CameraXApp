@@ -23,15 +23,17 @@ import android.provider.MediaStore
 
 import android.content.ContentValues
 import android.os.Build
+import android.view.View
+import android.widget.Button
 
 typealias LumaListener = (luma: Double) -> Unit
 
 
 class MainActivity : AppCompatActivity() {
     private lateinit var viewBinding: ActivityMainBinding
-
+    var cameraSelector=CameraSelector.DEFAULT_BACK_CAMERA
+    var b :Boolean = false
     private var imageCapture: ImageCapture? = null
-
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
 
@@ -55,7 +57,22 @@ class MainActivity : AppCompatActivity() {
         viewBinding.videoCaptureButton.setOnClickListener { captureVideo() }
 
         cameraExecutor = Executors.newSingleThreadExecutor()
+
+        val b = findViewById<Button>(R.id.button)
+        b.setOnClickListener{
+            if(cameraSelector==CameraSelector.DEFAULT_BACK_CAMERA )// Select back camera as a default
+                cameraSelector = CameraSelector.DEFAULT_FRONT_CAMERA
+            else
+                cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+            startCamera()
+             }
+        val b1 = findViewById<Button>(R.id.b1)
+        b1.setOnClickListener(View.OnClickListener {
+toggleTorch()
+        })
     }
+
+
 
     private class LuminosityAnalyzer(private val listener: LumaListener) : ImageAnalysis.Analyzer {
 
@@ -77,6 +94,20 @@ class MainActivity : AppCompatActivity() {
 
             image.close()
         }
+    }
+    private fun toggleTorch()
+    {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
+        val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+        val camera = cameraProvider.bindToLifecycle(this, cameraSelector)
+
+        // Get a cameraControl instance
+        val cameraControl = camera.cameraControl
+
+            b = !b
+            // Call enableTorch(), you can listen to the result to check whether it was successful
+            cameraControl.enableTorch(b)
+
     }
    private  fun takePhoto() {
        // Get a stable reference of the modifiable image capture use case
@@ -102,6 +133,7 @@ class MainActivity : AppCompatActivity() {
 
        // Set up image capture listener, which is triggered after photo has
        // been taken
+
        imageCapture.takePicture(
            outputOptions,
            ContextCompat.getMainExecutor(this),
@@ -209,34 +241,27 @@ class MainActivity : AppCompatActivity() {
 
             imageCapture = ImageCapture.Builder().build()
 
-            /*
-            val imageAnalyzer = ImageAnalysis.Builder().build()
-                .also {
-                    setAnalyzer(
-                        cameraExecutor,
-                        LuminosityAnalyzer { luma ->
-                            Log.d(TAG, "Average luminosity: $luma")
-                        }
-                    )
-                }
-            */
 
             // Select back camera as a default
-            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+            //val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+
 
             try {
                 // Unbind use cases before rebinding
                 cameraProvider.unbindAll()
 
                 // Bind use cases to camera
-                cameraProvider.bindToLifecycle(
+                 cameraProvider.bindToLifecycle(
                     this, cameraSelector, preview, imageCapture, videoCapture)
 
             } catch(exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
 
+
         }, ContextCompat.getMainExecutor(this))
+
+
     }
 
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
